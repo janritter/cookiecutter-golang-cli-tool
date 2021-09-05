@@ -29,7 +29,7 @@ jobs:
             gotestsum --junitfile /tmp/test-results/gotestsum-report.xml -- -coverprofile=c.out $PACKAGE_NAMES
              ./cc-test-reporter after-build --exit-code $?
             go tool cover -html=c.out -o coverage.html
-            mv coverage.html /tmp/artifacts 
+            mv coverage.html /tmp/artifacts
       - store_artifacts:
           path: /tmp/artifacts
       - store_test_results:

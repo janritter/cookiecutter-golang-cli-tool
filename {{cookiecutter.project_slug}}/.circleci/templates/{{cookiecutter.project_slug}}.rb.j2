@@ -22,7 +22,7 @@ class {{ cookiecutter.project_slug | title | replace("-", "") }} < Formula
         mv bin/"linux_amd64_{{cookiecutter.project_slug}}", bin/"{{cookiecutter.project_slug}}"
       end
     end
-  
+
     test do
       system "false"
     end
