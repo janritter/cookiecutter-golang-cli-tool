@@ -1,0 +1,29 @@
+# Documentation: https://docs.brew.sh/Formula-Cookbook
+#                https://www.rubydoc.info/github/Homebrew/brew/master/Formula
+
+class {{ cookiecutter.project_slug | title | replace("-", "") }} < Formula
+    desc "{{ cookiecutter.readme_short_description }}"
+    if OS.mac?
+      url "https://github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/releases/download/{{'{{ version }}'}}/darwin_amd64_{{cookiecutter.project_slug}}"
+      sha256 "{{'{{ sha256Mac }}'}}"
+      version "{{'{{ version }}'}}"
+    elsif OS.linux?
+      url "https://github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/releases/download/{{'{{ version }}'}}/linux_amd64_{{cookiecutter.project_slug}}"
+      sha256 "{{'{{ sha256Linux }}'}}"
+      version "{{'{{ version }}'}}"
+    end
+
+    def install
+      if OS.mac?
+        bin.install "darwin_amd64_{{cookiecutter.project_slug}}"
+        mv bin/"darwin_amd64_{{cookiecutter.project_slug}}", bin/"{{cookiecutter.project_slug}}"
+      elsif OS.linux?
+        bin.install "linux_amd64_{{cookiecutter.project_slug}}"
+        mv bin/"linux_amd64_{{cookiecutter.project_slug}}", bin/"{{cookiecutter.project_slug}}"
+      end
+    end
+  
+    test do
+      system "false"
+    end
+  end

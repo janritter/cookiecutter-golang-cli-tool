@@ -1,0 +1,124 @@
+version: 2.0
+
+jobs:
+  test:
+    docker:
+      - image: cimg/go:1.16
+    working_directory: ~/go/src/github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}
+    steps:
+      - checkout
+      - run:
+          name: Install CodeClimate reporter
+          command: |
+            curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+            chmod +x ./cc-test-reporter
+      - run:
+          name: Install dependencies
+          command: |
+            make prepare
+      - run:
+          name: "Create a temp directory for artifacts"
+          command: |
+            mkdir -p /tmp/artifacts
+            mkdir -p /tmp/test-results
+      - run:
+          name: Run tests
+          command: |
+            PACKAGE_NAMES=$(go list ./... | circleci tests split --split-by=timings --timings-type=classname)
+            ./cc-test-reporter before-build
+            gotestsum --junitfile /tmp/test-results/gotestsum-report.xml -- -coverprofile=c.out $PACKAGE_NAMES
+             ./cc-test-reporter after-build --exit-code $?
+            go tool cover -html=c.out -o coverage.html
+            mv coverage.html /tmp/artifacts 
+      - store_artifacts:
+          path: /tmp/artifacts
+      - store_test_results:
+          path: /tmp/test-results
+
+  semantic-release:
+    docker:
+      - image: circleci/node:12
+    steps:
+      - checkout
+      - run: "npm install @semantic-release/changelog &&
+              npm install @semantic-release/git &&
+              npx semantic-release"
+
+  build-release:
+    docker:
+      - image: cimg/go:1.16
+    working_directory: ~/go/src/github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}
+    steps:
+      - run:
+          name: Install additional packages
+          command: |
+            sudo apt-get update && sudo apt-get install python3 python3-pip git python3-jinja2 -y
+            go get github.com/mitchellh/gox
+            go get github.com/tcnksm/ghr
+      - checkout
+      - run:
+          name: Get latest master version, which includes the git tag from the semantic-release step
+          command: |
+            git checkout main
+            git pull
+      - run:
+          name: Install dependencies
+          command: |
+            make prepare
+      - run:
+          name: Configure git user
+          command: |
+            git config --global user.email "{{ cookiecutter.release_git_email }}"
+            git config --global user.name "{{ cookiecutter.release_git_name }}"
+            git remote set-url origin https://{{ cookiecutter.release_github_username }}:${GITHUB_TOKEN}@github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}.git
+      - run:
+          name: Build binaries
+          command: |
+            export NOW=$(date +'%Y-%m-%d_%T')
+            gox -output "{{'dist/{{.OS}}_{{.Arch}}_{{.Dir}}'}}" -ldflags "-X github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd.gitSha=`git rev-parse HEAD` -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd.buildTime=$NOW -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd.version=`git describe --abbrev=0 --tags`" -arch="amd64 arm64" -os="linux darwin windows"
+      - run:
+          name: Upload binaries to GitHub
+          command: |
+            ghr --username {{ cookiecutter.release_github_username }} --token $GITHUB_TOKEN --replace $(git describe --abbrev=0 --tags) dist/
+      - run:
+          name: Create new Homebrew formula
+          command: |
+            cd .circleci
+            export FILE_HASH_MAC=`sha256sum dist/darwin_amd64_{{cookiecutter.project_slug}} | awk '{print $1}'`
+            export FILE_HASH_LINUX=`sha256sum dist/linux_amd64_{{cookiecutter.project_slug}} | awk '{print $1}'`
+            export VERSION=`git describe --abbrev=0 --tags`
+            mkdir -p ../HomebrewFormula
+            python3 generateFormula.py
+            cd ..
+            git add HomebrewFormula && git commit -m "chore: deployment of version $VERSION Homebrew Forumla [skip ci]" && git push
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test:
+          filters:
+            branches:
+              only:
+              - /feat\/.*/
+              - /chore\/.*/
+              - /fix\/.*/
+              - /test\/.*/
+              - /refactor\/.*/
+              - /perf\/.*/
+              - /dependabot\/.*/
+              - main
+      - semantic-release:
+          requires:
+            - test
+          filters:
+            branches:
+              only:
+              - main
+      - build-release:
+          requires:
+            - semantic-release
+          filters:
+            branches:
+              only:
+              - main

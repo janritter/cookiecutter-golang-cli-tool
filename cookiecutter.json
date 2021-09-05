@@ -1,0 +1,11 @@
+{
+  "project_slug": "my-cli-tool",
+  "readme_title": "My CLI tool",
+  "readme_short_description": "This is a short description of my CLI tool",
+  "github_username": "cookiemonster",
+  "release_git_email": "somemail+circleci@example.com",
+  "release_git_name": "CircleCI",
+  "release_github_username": "github-token-username",
+  "author": "Cookie Monster",
+  "license": "MIT"
+}
