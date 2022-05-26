@@ -15,6 +15,9 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:   "{{cookiecutter.project_slug}}",
 	Short: "{{ cookiecutter.readme_short_description }}",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Hello world")
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
