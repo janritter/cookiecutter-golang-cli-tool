@@ -14,14 +14,14 @@ builds:
 checksum:
   name_template: "checksums.txt"
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: "{{ '{{ incpatch .Version }}' }}-next"
 
 brews:
   - tap:
       owner: "{{cookiecutter.github_username}}"
       name: "{{cookiecutter.project_slug}}"
 
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }} [skip ci]"
+    commit_msg_template: "Brew formula update for {{ '{{ .ProjectName }}' }} version {{ '{{ .Tag }}' }} [skip ci]"
 
     folder: HomebrewFormula
 
@@ -29,14 +29,14 @@ brews:
 
     description: "{{ cookiecutter.readme_short_description }}"
 
-    license: "MIT"
+    license: "{{ cookiecutter.license }}"
 
     install: |
       bin.install "{{cookiecutter.project_slug}}"
 
 signs:
   - cmd: cosign
-    stdin: "{{ .Env.COSIGN_PWD }}"
+    stdin: "{{ '{{ .Env.COSIGN_PWD }}' }}"
     args:
       ["sign-blob", "--key=cosign.key", "--output-signature=${signature}", "${artifact}"]
     artifacts: all
