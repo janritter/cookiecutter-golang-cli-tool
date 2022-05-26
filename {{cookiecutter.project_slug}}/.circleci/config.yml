@@ -1,4 +1,7 @@
-version: 2.0
+version: 2.1
+
+orbs:
+  semantic-release: trustedshops-public/semantic-release@2.0.0
 
 jobs:
   test:
@@ -35,62 +38,31 @@ jobs:
       - store_test_results:
           path: /tmp/test-results
 
-  semantic-release:
-    docker:
-      - image: circleci/node:12
-    steps:
-      - checkout
-      - run: "npm install @semantic-release/changelog &&
-              npm install @semantic-release/git &&
-              npx semantic-release"
-
   build-release:
     docker:
       - image: cimg/go:1.18
     working_directory: ~/go/src/github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}
     steps:
-      - run:
-          name: Install additional packages
-          command: |
-            sudo apt-get update && sudo apt-get install python3 python3-pip git python3-jinja2 -y
-            go get github.com/mitchellh/gox
-            go get github.com/tcnksm/ghr
       - checkout
+      - run:
+          name: Install goreleaser and cosign
+          command: |
+            go install github.com/goreleaser/goreleaser@latest
+            wget https://github.com/sigstore/cosign/releases/download/v1.8.0/cosign-linux-amd64
+            sudo mv cosign-linux-amd64 /usr/bin/cosign && sudo chmod +x /usr/bin/cosign
       - run:
           name: Get latest master version, which includes the git tag from the semantic-release step
           command: |
             git checkout main
             git pull
       - run:
-          name: Install dependencies
+          name: Add cosign key
           command: |
-            make prepare
+            echo $COSIGN_KEY | base64 --decode > cosign.key
       - run:
-          name: Configure git user
+          name: Run goreleaser
           command: |
-            git config --global user.email "{{ cookiecutter.release_git_email }}"
-            git config --global user.name "{{ cookiecutter.release_git_name }}"
-            git remote set-url origin https://{{ cookiecutter.release_github_username }}:${GITHUB_TOKEN}@github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}.git
-      - run:
-          name: Build binaries
-          command: |
-            export NOW=$(date +'%Y-%m-%d_%T')
-            gox -output "{{'dist/{{.OS}}_{{.Arch}}_{{.Dir}}'}}" -ldflags "-X github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd.gitSha=`git rev-parse HEAD` -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd.buildTime=$NOW -X github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd.version=`git describe --abbrev=0 --tags`" -arch="amd64 arm64" -os="linux darwin windows"
-      - run:
-          name: Upload binaries to GitHub
-          command: |
-            ghr --username {{ cookiecutter.release_github_username }} --token $GITHUB_TOKEN --replace $(git describe --abbrev=0 --tags) dist/
-      - run:
-          name: Create new Homebrew formula
-          command: |
-            export FILE_HASH_MAC=`sha256sum dist/darwin_amd64_{{cookiecutter.project_slug}} | awk '{print $1}'`
-            export FILE_HASH_LINUX=`sha256sum dist/linux_amd64_{{cookiecutter.project_slug}} | awk '{print $1}'`
-            export VERSION=`git describe --abbrev=0 --tags`
-            cd .circleci
-            mkdir -p ../HomebrewFormula
-            python3 generateFormula.py
-            cd ..
-            git add HomebrewFormula && git commit -m "chore: deployment of version $VERSION Homebrew Forumla [skip ci]" && git push
+            goreleaser release
 
 workflows:
   version: 2
@@ -100,25 +72,26 @@ workflows:
           filters:
             branches:
               only:
-              - /feat\/.*/
-              - /chore\/.*/
-              - /fix\/.*/
-              - /test\/.*/
-              - /refactor\/.*/
-              - /perf\/.*/
-              - /dependabot\/.*/
-              - main
-      - semantic-release:
+                - /feat\/.*/
+                - /chore\/.*/
+                - /fix\/.*/
+                - /test\/.*/
+                - /refactor\/.*/
+                - /perf\/.*/
+                - /dependabot\/.*/
+                - main
+      - semantic-release/with-changelog-github-config:
+          name: semantic-release
           requires:
             - test
           filters:
             branches:
               only:
-              - main
+                - main
       - build-release:
           requires:
             - semantic-release
           filters:
             branches:
               only:
-              - main
+                - main

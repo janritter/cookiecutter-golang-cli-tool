@@ -1,12 +1,7 @@
 package main
 
-import "fmt"
-
-func returnGreeting(name string) string {
-	return "Hello World from " + name
-}
+import "github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}/cmd"
 
 func main() {
-	name := "{{cookiecutter.project_slug}}"
-	fmt.Println(returnGreeting(name))
+	cmd.Execute()
 }
