@@ -6,3 +6,6 @@ bin/*
 
 # vscode
 .vscode/*
+
+# Cosign
+cosign.key
