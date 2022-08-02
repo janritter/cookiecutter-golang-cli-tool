@@ -1,6 +1,6 @@
 module github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}
 
-go 1.18
+go 1.19
 
 require (
 	github.com/mitchellh/go-homedir v1.1.0
