@@ -1,12 +1,12 @@
 version: 2.1
 
 orbs:
-  semantic-release: trustedshops-public/semantic-release@6.0.0
+  semantic-release: trustedshops-public/semantic-release@6.1.0
 
 jobs:
   test:
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.27
     working_directory: ~/go/src/github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}
     steps:
       - checkout
@@ -40,7 +40,7 @@ jobs:
 
   build-release:
     docker:
-      - image: cimg/go:1.20
+      - image: cimg/go:1.27
     working_directory: ~/go/src/github.com/{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}
     steps:
       - checkout
